@@ -19,13 +19,48 @@ npm run lint         # Run ESLint
 - Modem dial-up sound effect (Howler.js)
 
 ### Main Menu
-- ASCII castle art
-- Menu options with keyboard shortcut badges:
-  - (E)nter the Realm
-  - (V)iew Character
-  - (L)eaderboard
-  - (S)ettings
-  - (Q)uit
+- ASCII castle art with keyboard shortcut badges:
+  - [A] Adventure — random encounter quick fight
+  - [E] Explore — zone-based adventure with random events
+  - [R] Raid Castle — boss fights in NPC castles (2 turns)
+  - [B] Bounty Board — targeted kills for bonus rewards
+  - [M] Market — healer, weapons, armor, castle upgrades
+  - [S] Stats (placeholder)
+  - [Q] Quit
+
+### Combat System
+- Turn-based loop: (A)ttack or (R)un
+- RNG + stat modifiers (Str/Def/Agi)
+- Agility-based flee chance (10%–90%)
+- Real-time animated combat log
+- 10-enemy bestiary spanning levels 1–10 with ASCII art
+- Level-up progression (stat increases, HP restore)
+- Equipment bonuses applied to effective combat stats
+- Context-aware combat: adventure, bounty, zone, and raid modes
+
+### Adventure Zones (Explore)
+- 5 zones: Whispering Forest, Sunken Dungeon, Crystal Caves, Darkwood Swamp, Abyssal Depths
+- Weighted random events: combat, treasure, trap, healer, nothing
+- Difficulty tiers: easy, medium, hard, deadly
+- Level-gated zone access
+
+### Castle Raids
+- 4 NPC castles with custom boss enemies (~1.5x HP, ~1.2x stats)
+- XP/Gold multipliers (2x–3.5x)
+- 2-turn cost per raid
+- Level-gated access
+
+### Bounty Board
+- Level-scaled bounty generation from enemy pool
+- Bonus XP (50%) and gold (75%) on top of base rewards
+- 4 bounties per visit with flavor text descriptions
+
+### Market
+- **Healer**: Full HP restore, cost scales with level and missing HP
+- **Weapons** (5): Rusty Sword → Dragon Fang (+2 to +18 STR)
+- **Armor** (5): Leather Vest → Shadow Plate (+2 to +16 DEF)
+- **Castle Defenses** (4): Upgrades with checkmarks for owned items
+- Tab navigation with keyboard shortcuts
 
 ### Terminal Aesthetic
 - Black background with green monospace text
@@ -36,25 +71,15 @@ npm run lint         # Run ESLint
 ### Responsive Design
 - Mobile-first layout
 - Scaled ASCII art for different screen sizes
-- Touch-friendly menu buttons
+- Touch-friendly menu buttons with keyboard shortcuts
 
 ## Planned Features
 
-### Combat System
-- Turn-based loop: (A)ttack or (R)un
-- RNG + stat modifiers (Str/Def/Agi)
-- "Can't always run" mechanic (agility check)
-- Real-time combat log
-
-### Character Progression
-- Quests for XP/gold
-- Leveling system
-- Gear purchases (weapons/armor)
-
 ### Asynchronous PvP
 - Raid other players' castles while offline
-- Castle defense mechanics
-- Login summary of offline events
+- Castle defense mechanics (uses purchased castle defenses)
+- Login summary notifications for offline events
+- Mailbox system for PvP notifications
 
 ## Tech Stack
 
