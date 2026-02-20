@@ -3,14 +3,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
-import { PlayerState, Enemy, CombatAction, CombatOutcome } from '@/game/types';
+import { PlayerState, Enemy, CombatAction, CombatOutcome, CombatContext } from '@/game/types';
 import { executeTurn } from '@/game/combat';
 import { COMBAT_DIVIDER } from '@/app/constants';
 
 interface CombatScreenProps {
   player: PlayerState;
   enemy: Enemy;
-  onCombatEnd: (outcome: CombatOutcome, enemy: Enemy) => void;
+  context?: CombatContext;
+  onCombatEnd: (outcome: CombatOutcome, enemy: Enemy, context?: CombatContext) => void;
 }
 
 function renderHpBar(current: number, max: number, width: number = 20): string {
@@ -19,7 +20,17 @@ function renderHpBar(current: number, max: number, width: number = 20): string {
   return `[${'█'.repeat(filled)}${'░'.repeat(empty)}] ${current}/${max}`;
 }
 
-export default function CombatScreen({ player, enemy, onCombatEnd }: CombatScreenProps) {
+function getContextHeader(context?: CombatContext): string | null {
+  if (!context) return null;
+  switch (context.type) {
+    case 'bounty': return 'BOUNTY TARGET';
+    case 'raid': return `CASTLE RAID — ${context.castle.name}`;
+    case 'zone': return `ZONE — ${context.zoneName}`;
+    default: return null;
+  }
+}
+
+export default function CombatScreen({ player, enemy, context, onCombatEnd }: CombatScreenProps) {
   const [combatLog, setCombatLog] = useState<string[]>([
     `A wild Level ${enemy.level} ${enemy.name} appears!`
   ]);
@@ -51,8 +62,8 @@ export default function CombatScreen({ player, enemy, onCombatEnd }: CombatScree
   }, [isCombatOver, player, enemy, currentPlayerHp, currentEnemyHp]);
 
   const handleContinue = useCallback(() => {
-    if (outcome) onCombatEnd(outcome, enemy);
-  }, [outcome, enemy, onCombatEnd]);
+    if (outcome) onCombatEnd(outcome, enemy, context);
+  }, [outcome, enemy, context, onCombatEnd]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -79,8 +90,40 @@ export default function CombatScreen({ player, enemy, onCombatEnd }: CombatScree
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isCombatOver, handleAction, handleContinue]);
 
+  const contextHeader = getContextHeader(context);
+
+  function getRewardText(): string {
+    if (!context) return `You gained ${enemy.xpReward} XP and ${enemy.goldReward} gold!`;
+    switch (context.type) {
+      case 'bounty': {
+        const totalXp = enemy.xpReward + context.bounty.bonusXp;
+        const totalGold = enemy.goldReward + context.bounty.bonusGold;
+        return `You gained ${enemy.xpReward} + ${context.bounty.bonusXp} bonus XP and ${enemy.goldReward} + ${context.bounty.bonusGold} bonus gold! (Total: ${totalXp} XP, ${totalGold} gold)`;
+      }
+      case 'raid': {
+        const xp = Math.floor(enemy.xpReward * context.castle.bonusXpMultiplier);
+        const gold = Math.floor(enemy.goldReward * context.castle.bonusGoldMultiplier);
+        return `You gained ${xp} XP (${context.castle.bonusXpMultiplier}x) and ${gold} gold (${context.castle.bonusGoldMultiplier}x)!`;
+      }
+      default:
+        return `You gained ${enemy.xpReward} XP and ${enemy.goldReward} gold!`;
+    }
+  }
+
   return (
     <div className="w-full max-w-2xl mx-auto px-4 py-6 space-y-6">
+      {/* Context Header */}
+      {contextHeader && (
+        <div className={clsx(
+          'text-center font-bold font-mono tracking-widest text-sm',
+          context?.type === 'bounty' && 'text-yellow-500',
+          context?.type === 'raid' && 'text-red-400',
+          context?.type === 'zone' && 'text-cyan-400',
+        )}>
+          {contextHeader}
+        </div>
+      )}
+
       {/* Enemy Info Section */}
       <div className="space-y-4">
         {/* Enemy ASCII Art */}
@@ -171,7 +214,7 @@ export default function CombatScreen({ player, enemy, onCombatEnd }: CombatScree
           </div>
 
           <div className="text-center font-mono text-green-500">
-            {outcome === 'victory' && `You gained ${enemy.xpReward} XP and ${enemy.goldReward} gold!`}
+            {outcome === 'victory' && getRewardText()}
             {outcome === 'defeat' && 'You limp back to town...'}
             {outcome === 'fled' && 'You fled safely.'}
           </div>

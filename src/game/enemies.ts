@@ -4,7 +4,7 @@ import { Enemy } from './types';
  * Enemy bestiary for Tanelorn Reborn
  * Templates for random encounters spanning levels 1-10
  */
-const ENEMIES: Omit<Enemy, 'maxHp'>[] = [
+export const ENEMIES: Omit<Enemy, 'maxHp'>[] = [
   {
     name: 'Sewer Rat',
     level: 1,
@@ -163,6 +163,17 @@ const ENEMIES: Omit<Enemy, 'maxHp'>[] = [
    || ||`,
   },
 ];
+
+/**
+ * Get a specific enemy by name (returns a fresh copy with maxHp)
+ */
+export function getEnemyByName(name: string): Enemy {
+  const template = ENEMIES.find((e) => e.name === name);
+  if (!template) {
+    throw new Error(`Enemy not found: ${name}`);
+  }
+  return { ...template, maxHp: template.hp };
+}
 
 /**
  * Get a random enemy encounter based on player level

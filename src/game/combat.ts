@@ -99,5 +99,8 @@ export function createInitialPlayer(): PlayerState {
       defense: 5,
       agility: 7,
     },
+    weapon: null,
+    armor: null,
+    castleDefenses: [],
   };
 }

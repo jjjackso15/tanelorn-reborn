@@ -6,10 +6,17 @@ import { Terminal } from '@/components/Terminal';
 import { ASCII_LOGO, ASCII_CASTLE } from '@/app/constants';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
-import { Screen, PlayerState, Enemy, CombatOutcome } from '@/game/types';
+import { Screen, PlayerState, Enemy, CombatOutcome, CombatContext, Bounty, Zone, ZoneEvent, Weapon, Armor, CastleDefense, Castle } from '@/game/types';
 import { createInitialPlayer } from '@/game/combat';
 import { getRandomEncounter } from '@/game/enemies';
+import { generateBounties, getTargetEnemy } from '@/game/quests';
+import { getZoneEnemy } from '@/game/zones';
+import { getHealingCost } from '@/game/market';
 import CombatScreen from '@/components/CombatScreen';
+import MarketScreen from '@/components/MarketScreen';
+import QuestBoard from '@/components/QuestBoard';
+import AdventureBoard from '@/components/AdventureBoard';
+import CastleRaid from '@/components/CastleRaid';
 
 // Placeholder menu option component
 const MenuOption = ({ label, shortcut, onClick, disabled }: { label: string, shortcut: string, onClick?: () => void, disabled?: boolean }) => (
@@ -40,6 +47,8 @@ export default function Home() {
   const [logLines, setLogLines] = useState<string[]>([]);
   const [player, setPlayer] = useState<PlayerState>(createInitialPlayer);
   const [currentEnemy, setCurrentEnemy] = useState<Enemy | null>(null);
+  const [combatContext, setCombatContext] = useState<CombatContext | undefined>(undefined);
+  const [bounties, setBounties] = useState<Bounty[]>([]);
 
   // Using a ref to prevent re-creation of the Howl instance on every render
   const soundRef = useRef<Howl | null>(null);
@@ -85,24 +94,186 @@ export default function Home() {
     }, 6500);
   };
 
+  // Compute effective player stats (with equipment bonuses) for combat
+  const getEffectivePlayer = useCallback((): PlayerState => {
+    return {
+      ...player,
+      stats: {
+        strength: player.stats.strength + (player.weapon?.strengthBonus ?? 0),
+        defense: player.stats.defense + (player.armor?.defenseBonus ?? 0),
+        agility: player.stats.agility,
+      },
+    };
+  }, [player]);
+
+  // --- Menu handlers ---
+
   const handleAdventure = useCallback(() => {
     if (player.turnsRemaining <= 0) return;
     const enemy = getRandomEncounter(player.level);
     setCurrentEnemy(enemy);
+    setCombatContext({ type: 'adventure' });
     setScreen('combat');
   }, [player.level, player.turnsRemaining]);
+
+  const handleExplore = useCallback(() => {
+    if (player.turnsRemaining <= 0) return;
+    setScreen('adventure-board');
+  }, [player.turnsRemaining]);
+
+  const handleRaidCastle = useCallback(() => {
+    if (player.turnsRemaining < 2) return;
+    setScreen('castle-raid');
+  }, [player.turnsRemaining]);
+
+  const handleBountyBoard = useCallback(() => {
+    if (player.turnsRemaining <= 0) return;
+    setBounties(generateBounties(player.level));
+    setScreen('quest-board');
+  }, [player.level, player.turnsRemaining]);
+
+  const handleMarket = useCallback(() => {
+    setScreen('market');
+  }, []);
 
   const handleQuit = useCallback(() => {
     setScreen('login');
   }, []);
 
-  const handleCombatEnd = useCallback((outcome: CombatOutcome, enemy: Enemy) => {
+  const handleBack = useCallback(() => {
+    setScreen('menu');
+  }, []);
+
+  // --- Bounty handler ---
+
+  const handleSelectBounty = useCallback((bounty: Bounty) => {
+    if (player.turnsRemaining <= 0) return;
+    const enemy = getTargetEnemy(bounty);
+    setCurrentEnemy(enemy);
+    setCombatContext({ type: 'bounty', bounty });
+    setScreen('combat');
+  }, [player.turnsRemaining]);
+
+  // --- Adventure/Zone handlers ---
+
+  const handleSelectZone = useCallback((zone: Zone) => {
+    // Combat event from zone — generate the enemy and transition to combat
+    const enemy = getZoneEnemy(zone, player.level);
+    setCurrentEnemy(enemy);
+    setCombatContext({ type: 'zone', zoneName: zone.name });
+    setScreen('combat');
+  }, [player.level]);
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleZoneEvent = useCallback((event: ZoneEvent, _zone: Zone) => {
     setPlayer(prev => {
       const updated = { ...prev, turnsRemaining: prev.turnsRemaining - 1 };
 
+      switch (event.type) {
+        case 'treasure':
+          updated.gold = prev.gold + event.gold;
+          break;
+        case 'trap':
+          updated.hp = Math.max(1, prev.hp - event.damage);
+          break;
+        case 'healer':
+          if (prev.gold >= event.cost) {
+            updated.gold = prev.gold - event.cost;
+            updated.hp = Math.min(prev.maxHp, prev.hp + event.healAmount);
+          }
+          break;
+        case 'nothing':
+          // Just decrement turns
+          break;
+      }
+
+      return updated;
+    });
+    setScreen('menu');
+  }, []);
+
+  // --- Castle Raid handler ---
+
+  const handleSelectCastle = useCallback((castle: Castle) => {
+    if (player.turnsRemaining < 2) return;
+    // Use a spread copy of the boss so we don't mutate the castle definition
+    const boss = { ...castle.boss };
+    setCurrentEnemy(boss);
+    setCombatContext({ type: 'raid', castle });
+    setScreen('combat');
+  }, [player.turnsRemaining]);
+
+  // --- Market handlers ---
+
+  const handleHeal = useCallback(() => {
+    setPlayer(prev => {
+      const cost = getHealingCost(prev);
+      if (cost <= 0 || prev.gold < cost) return prev;
+      return {
+        ...prev,
+        hp: prev.maxHp,
+        gold: prev.gold - cost,
+        turnsRemaining: prev.turnsRemaining - 1,
+      };
+    });
+  }, []);
+
+  const handleBuyWeapon = useCallback((weapon: Weapon) => {
+    setPlayer(prev => {
+      if (prev.gold < weapon.cost) return prev;
+      return {
+        ...prev,
+        gold: prev.gold - weapon.cost,
+        weapon,
+      };
+    });
+  }, []);
+
+  const handleBuyArmor = useCallback((armor: Armor) => {
+    setPlayer(prev => {
+      if (prev.gold < armor.cost) return prev;
+      return {
+        ...prev,
+        gold: prev.gold - armor.cost,
+        armor,
+      };
+    });
+  }, []);
+
+  const handleBuyCastleDefense = useCallback((defense: CastleDefense) => {
+    setPlayer(prev => {
+      if (prev.gold < defense.cost) return prev;
+      return {
+        ...prev,
+        gold: prev.gold - defense.cost,
+        castleDefenses: [...prev.castleDefenses, defense],
+      };
+    });
+  }, []);
+
+  // --- Combat end handler ---
+
+  const handleCombatEnd = useCallback((outcome: CombatOutcome, enemy: Enemy, context?: CombatContext) => {
+    setPlayer(prev => {
+      const turnCost = context?.type === 'raid' ? 2 : 1;
+      const updated = { ...prev, turnsRemaining: prev.turnsRemaining - turnCost };
+
       if (outcome === 'victory') {
-        updated.xp = prev.xp + enemy.xpReward;
-        updated.gold = prev.gold + enemy.goldReward;
+        let xpGained = enemy.xpReward;
+        let goldGained = enemy.goldReward;
+
+        // Apply context-specific bonuses
+        if (context?.type === 'bounty') {
+          xpGained += context.bounty.bonusXp;
+          goldGained += context.bounty.bonusGold;
+        } else if (context?.type === 'raid') {
+          xpGained = Math.floor(enemy.xpReward * context.castle.bonusXpMultiplier);
+          goldGained = Math.floor(enemy.goldReward * context.castle.bonusGoldMultiplier);
+        }
+
+        updated.xp = prev.xp + xpGained;
+        updated.gold = prev.gold + goldGained;
+
         // Level up check
         if (updated.xp >= prev.xpToNext) {
           updated.level = prev.level + 1;
@@ -124,6 +295,7 @@ export default function Home() {
       return updated;
     });
     setCurrentEnemy(null);
+    setCombatContext(undefined);
     setScreen('menu');
   }, []);
 
@@ -136,6 +308,18 @@ export default function Home() {
       if (key === 'a') {
         e.preventDefault();
         handleAdventure();
+      } else if (key === 'e') {
+        e.preventDefault();
+        handleExplore();
+      } else if (key === 'r') {
+        e.preventDefault();
+        handleRaidCastle();
+      } else if (key === 'b') {
+        e.preventDefault();
+        handleBountyBoard();
+      } else if (key === 'm') {
+        e.preventDefault();
+        handleMarket();
       } else if (key === 'q') {
         e.preventDefault();
         handleQuit();
@@ -144,7 +328,7 @@ export default function Home() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [screen, handleAdventure, handleQuit]);
+  }, [screen, handleAdventure, handleExplore, handleRaidCastle, handleBountyBoard, handleMarket, handleQuit]);
 
   return (
     <Terminal className="scanline">
@@ -207,9 +391,11 @@ export default function Home() {
 
               <div className="grid gap-3">
                 <MenuOption label="ADVENTURE" shortcut="A" onClick={handleAdventure} disabled={player.turnsRemaining <= 0} />
+                <MenuOption label="EXPLORE" shortcut="E" onClick={handleExplore} disabled={player.turnsRemaining <= 0} />
+                <MenuOption label="RAID CASTLE" shortcut="R" onClick={handleRaidCastle} disabled={player.turnsRemaining < 2} />
+                <MenuOption label="BOUNTY BOARD" shortcut="B" onClick={handleBountyBoard} disabled={player.turnsRemaining <= 0} />
+                <MenuOption label="MARKET" shortcut="M" onClick={handleMarket} />
                 <MenuOption label="STATS" shortcut="S" />
-                <MenuOption label="TAVERN" shortcut="T" />
-                <MenuOption label="MAILBOX" shortcut="M" />
                 <MenuOption label="QUIT" shortcut="Q" onClick={handleQuit} />
               </div>
 
@@ -217,6 +403,8 @@ export default function Home() {
                 <p>Turns Remaining: {player.turnsRemaining}</p>
                 <p>Current HP: {player.hp}/{player.maxHp}</p>
                 <p>Level: {player.level} | XP: {player.xp}/{player.xpToNext} | Gold: {player.gold}</p>
+                {player.weapon && <p>Weapon: {player.weapon.name} (+{player.weapon.strengthBonus} STR)</p>}
+                {player.armor && <p>Armor: {player.armor.name} (+{player.armor.defenseBonus} DEF)</p>}
               </div>
             </div>
           </motion.div>
@@ -232,9 +420,83 @@ export default function Home() {
             className="flex flex-col items-center justify-start pt-10 h-full w-full"
           >
             <CombatScreen
-              player={player}
+              player={getEffectivePlayer()}
               enemy={currentEnemy}
+              context={combatContext}
               onCombatEnd={handleCombatEnd}
+            />
+          </motion.div>
+        )}
+
+        {screen === 'market' && (
+          <motion.div
+            key="market"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col items-center justify-start pt-10 h-full w-full"
+          >
+            <MarketScreen
+              player={player}
+              onHeal={handleHeal}
+              onBuyWeapon={handleBuyWeapon}
+              onBuyArmor={handleBuyArmor}
+              onBuyCastleDefense={handleBuyCastleDefense}
+              onBack={handleBack}
+            />
+          </motion.div>
+        )}
+
+        {screen === 'quest-board' && (
+          <motion.div
+            key="quest-board"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col items-center justify-start h-full w-full"
+          >
+            <QuestBoard
+              bounties={bounties}
+              player={player}
+              onSelectBounty={handleSelectBounty}
+              onBack={handleBack}
+            />
+          </motion.div>
+        )}
+
+        {screen === 'adventure-board' && (
+          <motion.div
+            key="adventure-board"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col items-center justify-start h-full w-full"
+          >
+            <AdventureBoard
+              player={player}
+              onSelectZone={handleSelectZone}
+              onZoneEvent={handleZoneEvent}
+              onBack={handleBack}
+            />
+          </motion.div>
+        )}
+
+        {screen === 'castle-raid' && (
+          <motion.div
+            key="castle-raid"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col items-center justify-start h-full w-full"
+          >
+            <CastleRaid
+              player={player}
+              onSelectCastle={handleSelectCastle}
+              onBack={handleBack}
             />
           </motion.div>
         )}
