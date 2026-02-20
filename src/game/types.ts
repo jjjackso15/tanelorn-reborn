@@ -1,4 +1,4 @@
-export type Screen = 'login' | 'menu' | 'combat' | 'market' | 'quest-board' | 'adventure-board' | 'castle-raid';
+export type Screen = 'login' | 'menu' | 'combat' | 'market' | 'quest-board' | 'adventure-board' | 'castle-raid' | 'delve';
 
 export interface PlayerStats {
   strength: number;
@@ -43,6 +43,8 @@ export interface PlayerState {
   weapon: Weapon | null;
   armor: Armor | null;
   castleDefenses: CastleDefense[];
+  relic: Relic | null;
+  clearedBosses: string[];
 }
 
 export interface Enemy {
@@ -123,4 +125,69 @@ export interface Castle {
   bonusXpMultiplier: number;
   bonusGoldMultiplier: number;
   ascii: string;
+}
+
+// --- Delve System Types ---
+
+export interface DOTEffect {
+  type: 'poison' | 'fire';
+  damagePerStep: number;
+  remainingSteps: number;
+}
+
+export interface DelveBuff {
+  name: string;
+  stat: 'strength' | 'defense' | 'agility';
+  amount: number;
+}
+
+export interface DelveItem {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+  effect: DelveBuff | { type: 'heal'; amount: number };
+}
+
+export interface Relic {
+  id: string;
+  name: string;
+  description: string;
+  statBonuses: Partial<{ strength: number; defense: number; agility: number }>;
+}
+
+export type DelveStepEvent =
+  | { type: 'combat'; enemy: Enemy }
+  | { type: 'trap'; damage: number; message: string; dot?: DOTEffect }
+  | { type: 'merchant'; items: DelveItem[] }
+  | { type: 'buffer'; buff: DelveBuff; message: string }
+  | { type: 'healer'; cost: number; healAmount: number }
+  | { type: 'treasure'; gold: number; message: string }
+  | { type: 'boss'; enemy: Enemy; relic?: Relic };
+
+export interface DelveState {
+  zone: Zone;
+  step: number;
+  playerHp: number;
+  goldAccum: number;
+  xpAccum: number;
+  activeDOTs: DOTEffect[];
+  activeBuffs: DelveBuff[];
+  events: DelveStepEvent[];
+  acquiredRelic?: Relic;
+}
+
+export interface ZoneBoss {
+  zoneId: string;
+  enemy: Enemy;
+  relic: Relic;
+}
+
+export interface DelveResult {
+  outcome: 'cleared' | 'retreated' | 'defeated';
+  goldEarned: number;
+  xpEarned: number;
+  relic?: Relic;
+  finalHp: number;
+  stepsCompleted: number;
 }

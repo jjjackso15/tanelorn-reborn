@@ -38,9 +38,18 @@ npm run lint         # Run ESLint
 - Equipment bonuses applied to effective combat stats
 - Context-aware combat: adventure, bounty, zone, and raid modes
 
-### Adventure Zones (Explore)
-- 5 zones: Whispering Forest, Sunken Dungeon, Crystal Caves, Darkwood Swamp, Abyssal Depths
-- Weighted random events: combat, treasure, trap, healer, nothing
+### Dungeon Delve (Explore)
+- 6-step dungeon crawl through 5 zones with risk/reward loop
+- Zone selection: Whispering Forest, Sunken Dungeon, Crystal Caves, Darkwood Swamp, Abyssal Depths
+- Step-by-step progression: choose to delve deeper or retreat after each step
+- Weighted random events per step: combat, trap, merchant, buffer NPC, healer, treasure
+- Steps 1-3 include friendly NPCs; steps 4-5 are hostile only; step 6 is always a zone boss
+- Zone bosses with unique permanent Relic drops (+STR/DEF/AGI stat bonuses)
+- DOT effects (poison/fire) from traps that tick each step
+- In-delve merchants selling temporary buff items per zone
+- Buffer NPCs grant free stat buffs for the current delve
+- Retreat keeps all accumulated rewards; defeat loses 50% delve gold
+- Cleared bosses are tracked — re-delving yields a strong enemy instead
 - Difficulty tiers: easy, medium, hard, deadly
 - Level-gated zone access
 

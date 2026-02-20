@@ -11,7 +11,7 @@ interface CombatScreenProps {
   player: PlayerState;
   enemy: Enemy;
   context?: CombatContext;
-  onCombatEnd: (outcome: CombatOutcome, enemy: Enemy, context?: CombatContext) => void;
+  onCombatEnd: (outcome: CombatOutcome, enemy: Enemy, context?: CombatContext, finalPlayerHp?: number) => void;
 }
 
 function renderHpBar(current: number, max: number, width: number = 20): string {
@@ -62,8 +62,8 @@ export default function CombatScreen({ player, enemy, context, onCombatEnd }: Co
   }, [isCombatOver, player, enemy, currentPlayerHp, currentEnemyHp]);
 
   const handleContinue = useCallback(() => {
-    if (outcome) onCombatEnd(outcome, enemy, context);
-  }, [outcome, enemy, context, onCombatEnd]);
+    if (outcome) onCombatEnd(outcome, enemy, context, currentPlayerHp);
+  }, [outcome, enemy, context, onCombatEnd, currentPlayerHp]);
 
   // Keyboard shortcuts
   useEffect(() => {
