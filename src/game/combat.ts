@@ -102,5 +102,7 @@ export function createInitialPlayer(): PlayerState {
     weapon: null,
     armor: null,
     castleDefenses: [],
+    relic: null,
+    clearedBosses: [],
   };
 }

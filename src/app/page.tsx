@@ -6,17 +6,17 @@ import { Terminal } from '@/components/Terminal';
 import { ASCII_LOGO, ASCII_CASTLE } from '@/app/constants';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
-import { Screen, PlayerState, Enemy, CombatOutcome, CombatContext, Bounty, Zone, ZoneEvent, Weapon, Armor, CastleDefense, Castle } from '@/game/types';
+import { Screen, PlayerState, Enemy, CombatOutcome, CombatContext, Bounty, Zone, DelveResult, Weapon, Armor, CastleDefense, Castle } from '@/game/types';
 import { createInitialPlayer } from '@/game/combat';
 import { getRandomEncounter } from '@/game/enemies';
 import { generateBounties, getTargetEnemy } from '@/game/quests';
-import { getZoneEnemy } from '@/game/zones';
 import { getHealingCost } from '@/game/market';
 import CombatScreen from '@/components/CombatScreen';
 import MarketScreen from '@/components/MarketScreen';
 import QuestBoard from '@/components/QuestBoard';
 import AdventureBoard from '@/components/AdventureBoard';
 import CastleRaid from '@/components/CastleRaid';
+import DelveScreen from '@/components/DelveScreen';
 
 // Placeholder menu option component
 const MenuOption = ({ label, shortcut, onClick, disabled }: { label: string, shortcut: string, onClick?: () => void, disabled?: boolean }) => (
@@ -49,6 +49,7 @@ export default function Home() {
   const [currentEnemy, setCurrentEnemy] = useState<Enemy | null>(null);
   const [combatContext, setCombatContext] = useState<CombatContext | undefined>(undefined);
   const [bounties, setBounties] = useState<Bounty[]>([]);
+  const [activeDelveZone, setActiveDelveZone] = useState<Zone | null>(null);
 
   // Using a ref to prevent re-creation of the Howl instance on every render
   const soundRef = useRef<Howl | null>(null);
@@ -91,14 +92,14 @@ export default function Home() {
     }, 6500);
   };
 
-  // Compute effective player stats (with equipment bonuses) for combat
+  // Compute effective player stats (with equipment + relic bonuses) for combat
   const getEffectivePlayer = useCallback((): PlayerState => {
     return {
       ...player,
       stats: {
-        strength: player.stats.strength + (player.weapon?.strengthBonus ?? 0),
-        defense: player.stats.defense + (player.armor?.defenseBonus ?? 0),
-        agility: player.stats.agility,
+        strength: player.stats.strength + (player.weapon?.strengthBonus ?? 0) + (player.relic?.statBonuses.strength ?? 0),
+        defense: player.stats.defense + (player.armor?.defenseBonus ?? 0) + (player.relic?.statBonuses.defense ?? 0),
+        agility: player.stats.agility + (player.relic?.statBonuses.agility ?? 0),
       },
     };
   }, [player]);
@@ -151,43 +152,52 @@ export default function Home() {
     setScreen('combat');
   }, [player.turnsRemaining]);
 
-  // --- Adventure/Zone handlers ---
+  // --- Delve handlers ---
 
-  const handleSelectZone = useCallback((zone: Zone) => {
-    // Combat event from zone — generate the enemy and transition to combat
-    const enemy = getZoneEnemy(zone, player.level);
-    setCurrentEnemy(enemy);
-    setCombatContext({ type: 'zone', zoneName: zone.name });
-    setScreen('combat');
-  }, [player.level]);
+  const handleStartDelve = useCallback((zone: Zone) => {
+    if (player.turnsRemaining <= 0) return;
+    setActiveDelveZone(zone);
+    setPlayer(prev => ({ ...prev, turnsRemaining: prev.turnsRemaining - 1 }));
+    setScreen('delve');
+  }, [player.turnsRemaining]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleZoneEvent = useCallback((event: ZoneEvent, _zone: Zone) => {
+  const handleDelveEnd = useCallback((result: DelveResult) => {
     setPlayer(prev => {
-      const updated = { ...prev, turnsRemaining: prev.turnsRemaining - 1 };
+      const updated = { ...prev };
 
-      switch (event.type) {
-        case 'treasure':
-          updated.gold = prev.gold + event.gold;
-          break;
-        case 'trap':
-          updated.hp = Math.max(1, prev.hp - event.damage);
-          break;
-        case 'healer':
-          if (prev.gold >= event.cost) {
-            updated.gold = prev.gold - event.cost;
-            updated.hp = Math.min(prev.maxHp, prev.hp + event.healAmount);
-          }
-          break;
-        case 'nothing':
-          // Just decrement turns
-          break;
+      updated.gold = prev.gold + result.goldEarned;
+      updated.xp = prev.xp + result.xpEarned;
+      updated.hp = Math.max(1, result.finalHp);
+
+      // Assign relic if one was earned
+      if (result.relic) {
+        updated.relic = result.relic;
+      }
+
+      // Add boss to clearedBosses if dungeon was cleared
+      if (result.outcome === 'cleared' && activeDelveZone) {
+        updated.clearedBosses = [...prev.clearedBosses, activeDelveZone.id];
+      }
+
+      // Level up check
+      if (updated.xp >= prev.xpToNext) {
+        updated.level = prev.level + 1;
+        updated.xp = updated.xp - prev.xpToNext;
+        updated.xpToNext = Math.floor(prev.xpToNext * 1.5);
+        updated.maxHp = prev.maxHp + 10;
+        updated.hp = updated.maxHp;
+        updated.stats = {
+          strength: prev.stats.strength + 2,
+          defense: prev.stats.defense + 1,
+          agility: prev.stats.agility + 1,
+        };
       }
 
       return updated;
     });
+    setActiveDelveZone(null);
     setScreen('menu');
-  }, []);
+  }, [activeDelveZone]);
 
   // --- Castle Raid handler ---
 
@@ -402,6 +412,7 @@ export default function Home() {
                 <p>Level: {player.level} | XP: {player.xp}/{player.xpToNext} | Gold: {player.gold}</p>
                 {player.weapon && <p>Weapon: {player.weapon.name} (+{player.weapon.strengthBonus} STR)</p>}
                 {player.armor && <p>Armor: {player.armor.name} (+{player.armor.defenseBonus} DEF)</p>}
+                {player.relic && <p>Relic: {player.relic.name}</p>}
               </div>
             </div>
           </motion.div>
@@ -474,9 +485,25 @@ export default function Home() {
           >
             <AdventureBoard
               player={player}
-              onSelectZone={handleSelectZone}
-              onZoneEvent={handleZoneEvent}
+              onSelectZone={handleStartDelve}
               onBack={handleBack}
+            />
+          </motion.div>
+        )}
+
+        {screen === 'delve' && activeDelveZone && (
+          <motion.div
+            key="delve"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col items-center justify-start h-full w-full"
+          >
+            <DelveScreen
+              player={getEffectivePlayer()}
+              zone={activeDelveZone}
+              onDelveEnd={handleDelveEnd}
             />
           </motion.div>
         )}

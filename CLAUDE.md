@@ -48,15 +48,17 @@ Branch naming: `feature/`, `fix/`, `refactor/` prefixes
   │   ├── CombatScreen.tsx     # Turn-based combat UI with context-aware headers/rewards
   │   ├── MarketScreen.tsx     # Tabbed market: healer, weapons, armor, castle upgrades
   │   ├── QuestBoard.tsx       # Bounty board with targeted kill missions
-  │   ├── AdventureBoard.tsx   # Zone selection + inline non-combat event resolution
+  │   ├── AdventureBoard.tsx   # Zone selector for dungeon delves
+  │   ├── DelveScreen.tsx      # Self-contained 6-step dungeon delve state machine
   │   └── CastleRaid.tsx       # NPC castle list for boss raids
   └── game/
-      ├── types.ts             # All game types (Screen, PlayerState, Enemy, Combat, Equipment, Zones, etc.)
+      ├── types.ts             # All game types (Screen, PlayerState, Enemy, Combat, Equipment, Zones, Delve, etc.)
       ├── combat.ts            # Damage/flee formulas, turn executor, initial player factory
       ├── enemies.ts           # 10-enemy bestiary, random encounter + lookup by name
       ├── market.ts            # Weapons, armors, castle defenses, healing cost, availability filters
       ├── quests.ts            # Bounty generation and target enemy lookup
       ├── zones.ts             # 5 adventure zones, weighted event generation
+      ├── delve.ts             # Zone bosses, merchant items, delve event generation, DOT/buff logic
       └── castles.ts           # 4 NPC castles with boss definitions
 ```
 
@@ -77,7 +79,8 @@ Branch naming: `feature/`, `fix/`, `refactor/` prefixes
 - Framer Motion `AnimatePresence` for state transitions
 - `useCallback` for all handlers (stable references for keyboard listeners)
 - Game state lives in `page.tsx`; child components receive handlers as props
-- Combat receives `getEffectivePlayer()` (base stats + equipment bonuses)
+- Combat receives `getEffectivePlayer()` (base stats + equipment + relic bonuses)
+- `DelveScreen` is a self-contained state machine — all delve state lives inside it, reports results to parent via `onDelveEnd` callback
 
 ### Game Data Patterns
 - Enemy templates stored as `Omit<Enemy, 'maxHp'>[]`, spread-copied with `maxHp` set on retrieval
@@ -91,20 +94,26 @@ Branch naming: `feature/`, `fix/`, `refactor/` prefixes
 
 ## Current State
 
-The app has 7 screen states managed by `page.tsx`:
+The app has 8 screen states managed by `page.tsx`:
 1. **Login Screen:** ASCII logo + simulated modem handshake animation
 2. **Main Menu:** ASCII castle + 7 menu options with keyboard shortcuts (A/E/R/B/M/S/Q)
 3. **Combat:** Turn-based fight with context-aware headers/rewards (adventure, bounty, zone, raid)
 4. **Market:** Tabbed interface — healer (H), weapons (W), armor (A), castle upgrades (C)
 5. **Quest Board:** 4 level-scaled bounties with bonus XP/gold
-6. **Adventure Board:** 5 zones with weighted random events, inline non-combat resolution
-7. **Castle Raid:** 4 NPC castles with boss fights, 2-turn cost, multiplied rewards
+6. **Adventure Board:** Zone selector that launches dungeon delves
+7. **Delve:** Self-contained 6-step dungeon crawl with embedded combat, DOTs, merchants, bosses, relics
+8. **Castle Raid:** 4 NPC castles with boss fights, 2-turn cost, multiplied rewards
 
 ### Game Logic
-- **Equipment bonuses** are computed as effective stats before passing to CombatScreen (weapon STR + armor DEF)
+- **Equipment bonuses** are computed as effective stats before passing to CombatScreen (weapon STR + armor DEF + relic bonuses)
 - **Combat context** (`CombatContext` type) determines reward calculation: standard, bounty bonus, raid multipliers
 - **Turn economy**: adventure/explore/bounty cost 1 turn, raids cost 2 turns, healing costs 1 turn
 - **Level gating**: zones, castles, and equipment filter by `requiredLevel`
+- **Delve system**: 6-step dungeon crawl with risk/reward loop — retreat keeps rewards, defeat loses 50% gold
+- **DOT effects**: poison/fire from traps tick damage each step, tracked in `DelveScreen` state
+- **Delve buffs**: temporary stat buffs from merchants and buffer NPCs, active only during current delve
+- **Relics**: permanent stat bonuses from zone bosses, one relic at a time, bonuses included in `getEffectivePlayer()`
+- **Cleared bosses**: tracked in `PlayerState.clearedBosses[]`, re-delving yields a strong enemy instead of boss
 
 Audio served locally from `/public/sounds/modem.mp3`.
 
