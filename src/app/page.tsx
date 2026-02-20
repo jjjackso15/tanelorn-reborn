@@ -64,11 +64,8 @@ export default function Home() {
 
     // Initialize sound on user interaction (browser policy)
     if (!soundRef.current) {
-        // Using a publicly available creative commons sound or placeholder
-        // In production, serve this file locally from /public/sounds/modem.mp3
         soundRef.current = new Howl({
-            src: ['https://freesound.org/data/previews/16/16475_39474-lq.mp3'], // Short dial-up snippet
-            html5: true, // Force HTML5 Audio to stream (better for cross-origin)
+            src: ['/sounds/modem.mp3'],
             volume: 0.3,
         });
     }
@@ -79,7 +76,7 @@ export default function Home() {
     // Simulate the sequence
     setTimeout(() => {
         addLog("DIALING...");
-        // soundRef.current?.play(); // Uncomment when a real file is present and CORS allowed
+        soundRef.current?.play();
     }, 800);
 
     setTimeout(() => addLog("HANDSHAKE..."), 2500);

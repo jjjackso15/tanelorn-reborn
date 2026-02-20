@@ -106,7 +106,7 @@ The app has 7 screen states managed by `page.tsx`:
 - **Turn economy**: adventure/explore/bounty cost 1 turn, raids cost 2 turns, healing costs 1 turn
 - **Level gating**: zones, castles, and equipment filter by `requiredLevel`
 
-Audio currently uses a placeholder URL; production should serve from `/public/sounds/modem.mp3`.
+Audio served locally from `/public/sounds/modem.mp3`.
 
 ## Planned Features
 
