@@ -31,3 +31,5 @@ export const ASCII_CASTLE = `
  | | | |  | | | | | |
  | | | |  | | | | | |
 `;
+
+export const COMBAT_DIVIDER = `════════════════════════════════════════`;
