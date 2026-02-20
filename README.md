@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Project Tanelorn Reborn (Working Title)
 
-## Getting Started
+## Concept
+A mobile-first, browser-based RPG inspired by 1980s BBS door games (specifically Tanelorn BBS).
 
-First, run the development server:
+## Design & Aesthetics
+- **Visual Style**:
+  - "Terminal" aesthetic: Black background, monospaced font (Green/Amber/White text options?).
+  - **ASCII Art**:
+    - "Tanelorn BBS" logo on login.
+    - Castle ASCII art on main menu.
+- **Audio**:
+  - **Modem Handshake**: Plays when user clicks "Connect"/Login.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Core Mechanics
+- **Text-based Interface**: Minimalist, nostalgic UI.
+- **Combat System**:
+  - Simple turn-based loop: (A)ttack or (R)un.
+  - Outcome based on RNG + Stat Modifiers (Str/Def/Agi).
+  - "Can't always run" mechanic (agility check).
+  - Real-time combat log: "You hit Orc for 12 dmg! (HP: 48/60)" / "Orc hits you for 8 dmg! (HP: 32/50)".
+- **Asynchronous PvP**: Players can raid each other's "castles" while offline.
+- **Login Summary**: Immediate notification of offline events (raids, defense, losses/wins).
+- **Character Progression**:
+  - Quests for XP/gold.
+  - Leveling up.
+  - Gear purchases (weapons/armor) to improve stats.
+- **Mobile Optimized**: Designed for quick play sessions on a phone browser.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Inspiration
+- Tanelorn BBS (C64 era)
+- Legend of the Red Dragon (LORD)?
+- Usurper?
+- TradeWars 2002?
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Potential Tech Stack
+- **Frontend**: React/Next.js (Mobile-first UI library like Shadcn/UI or specialized retro UI).
+- **Backend**: Node.js/TypeScript (Express or Hono).
+- **Database**: PostgreSQL or SQLite (Prisma ORM).
+- **Deployment**: Vercel/Coolify.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Next Steps
+1. Define the specific mechanics (turn-based daily limit? energy system?).
+2. Choose a name.
+3. Set up the repo and basic stack.
