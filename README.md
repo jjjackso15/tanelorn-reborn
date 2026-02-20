@@ -21,7 +21,7 @@ npm run lint         # Run ESLint
 ### Main Menu
 - ASCII castle art with keyboard shortcut badges:
   - [A] Adventure — random encounter quick fight
-  - [E] Explore — zone-based adventure with random events
+  - [E] Explore — 6-step dungeon delve with bosses and relics
   - [R] Raid Castle — boss fights in NPC castles (2 turns)
   - [B] Bounty Board — targeted kills for bonus rewards
   - [M] Market — healer, weapons, armor, castle upgrades

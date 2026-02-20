@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Tanelorn Reborn is a mobile-first, browser-based RPG with a 1980s BBS aesthetic. Inspired by classic door games like Legend of the Red Dragon and TradeWars 2002. Features login simulation, turn-based combat with multiple entry modes (adventure, explore, bounty, castle raid), equipment system, and a market.
+Tanelorn Reborn is a mobile-first, browser-based RPG with a 1980s BBS aesthetic. Inspired by classic door games like Legend of the Red Dragon and TradeWars 2002. Features login simulation, turn-based combat with multiple entry modes (adventure, dungeon delve, bounty, castle raid), equipment system, relic drops from zone bosses, and a market.
 
 ## Commands
 
